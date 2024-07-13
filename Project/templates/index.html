@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Electricity Price Prediction</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+</head>
+<body>
+    <div class="container">
+        <h1>Electricity Price Prediction</h1>
+        <form id="prediction-form">
+            <label for="date">Date and Time:</label>
+            <input type="datetime-local" id="date" name="date" required>
+            <label for="hours">Number of Hours:</label>
+            <input type="number" id="hours" name="hours" required>
+            <button type="submit">Predict</button>
+        </form>
+        <div id="loading" style="display: none; text-align: center;">
+            <iframe src="https://giphy.com/embed/IaVWq3MSU6EMsVCTkz" width="200" height="200" frameBorder="0" class="giphy-embed" allowFullScreen></iframe>
+        </div>
+        <div id="result"></div>
+    </div>
+
+    <script>
+        $(document).ready(function() {
+            $('#prediction-form').on('submit', function(event) {
+                event.preventDefault();
+                $('#loading').show();
+                $('#result').hide();
+                setTimeout(function() {
+                    $.ajax({
+                        url: '/predict',
+                        method: 'POST',
+                        data: $('#prediction-form').serialize(),
+                        success: function(response) {
+                            $('#loading').hide();
+                            $('#result').html(`
+                                <h2>Best Time to Charge</h2>
+                                <p>${response.best_time}</p>
+                                <h2>Predicted Price at Best Time</h2>
+                                <p>${response.best_price.toFixed(2)} EUR</p>
+                                <h2>Predicted Price at Your Time</h2>
+                                <p>${response.user_price.toFixed(2)} EUR</p>
+                                <h2>Amount Charged at Your Time</h2>
+                                <p>${response.amount_charged_at_input_time.toFixed(2)} EUR</p>
+                                <h2>Amount Charged at Best Time</h2>
+                                <p>${response.amount_charged_at_best_time.toFixed(2)} EUR</p>
+                                <h2>Amount Saved</h2>
+                                <p>${response.amount_saved.toFixed(2)} EUR</p>
+                            `).show();
+                        }
+                    });
+                }, 3000); 
+            });
+        });
+    </script>
+</body>
+</html>
