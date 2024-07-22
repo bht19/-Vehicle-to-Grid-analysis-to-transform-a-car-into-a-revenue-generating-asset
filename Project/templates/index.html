@@ -3,58 +3,147 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Electricity Price Prediction</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
-    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <title>Electric Vehicle Charge State</title>
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/4.0.0/css/bootstrap.min.css">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-image: url('{{ url_for('static', filename='ev-background.jpg') }}');
+            background-size: cover;
+            background-position: center;
+            margin: 0;
+            padding: 0;
+            color: #fff;
+        }
+
+        .container {
+            max-width: 600px;
+            margin: 50px auto;
+            padding: 20px;
+            background-color: rgba(0, 0, 0, 0.7);
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
+            border-radius: 8px;
+        }
+
+        h1 {
+            text-align: center;
+        }
+
+        form {
+            display: flex;
+            flex-direction: column;
+        }
+
+        label {
+            margin: 10px 0 5px;
+        }
+
+        input, button {
+            padding: 10px;
+            margin-bottom: 10px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+
+        button {
+            background-color: #28a745;
+            color: #fff;
+            cursor: pointer;
+            border: none;
+        }
+
+        button:hover {
+            background-color: #218838;
+        }
+
+        #loading {
+            text-align: center;
+            margin-top: 20px;
+            display: none;
+        }
+
+        #loading iframe {
+            display: inline-block;
+            width: 200px;
+            height: 200px;
+        }
+
+        #results {
+            margin-top: 20px;
+            display: none;
+        }
+
+        #results h2 {
+            margin: 0 0 10px;
+        }
+    </style>
 </head>
 <body>
     <div class="container">
-        <h1>Electricity Price Prediction</h1>
-        <form id="prediction-form">
-            <label for="date">Date and Time:</label>
-            <input type="datetime-local" id="date" name="date" required>
-            <label for="hours">Number of Hours:</label>
-            <input type="number" id="hours" name="hours" required>
-            <button type="submit">Predict</button>
+        <h1 class="mt-5">Electric Vehicle Charge State</h1>
+        <form method="POST" action="/predict">
+            <div class="form-group">
+                <label for="date">Date and Time:</label>
+                <input type="datetime-local" class="form-control" id="date" name="date" required>
+            </div>
+            <div class="form-group">
+                <label for="hours">Charging Duration (hours):</label>
+                <input type="number" class="form-control" id="hours" name="hours" required>
+            </div>
+            <div class="form-group">
+                <label for="battery_capacity">Battery Capacity (kWh):</label>
+                <input type="number" class="form-control" id="battery_capacity" name="battery_capacity" required>
+            </div>
+            <div class="form-group">
+                <label for="soc">Initial SOC (%):</label>
+                <input type="number" class="form-control" id="soc" name="soc" required>
+            </div>
+            <button type="submit" class="btn btn-primary">Submit</button>
         </form>
-        <div id="loading" style="display: none; text-align: center;">
-            <iframe src="https://giphy.com/embed/IaVWq3MSU6EMsVCTkz" width="200" height="200" frameBorder="0" class="giphy-embed" allowFullScreen></iframe>
+
+        <div id="loading">
+            <iframe src="https://giphy.com/embed/Wd5pozrB1OLB7K7VxB" frameBorder="0" class="giphy-embed" allowFullScreen></iframe>
+            <p>Loading...</p>
         </div>
-        <div id="result"></div>
+
+        <div id="results">
+            <!-- Results will be displayed here -->
+        </div>
     </div>
 
     <script>
-        $(document).ready(function() {
-            $('#prediction-form').on('submit', function(event) {
-                event.preventDefault();
-                $('#loading').show();
-                $('#result').hide();
-                setTimeout(function() {
-                    $.ajax({
-                        url: '/predict',
-                        method: 'POST',
-                        data: $('#prediction-form').serialize(),
-                        success: function(response) {
-                            $('#loading').hide();
-                            $('#result').html(`
-                                <h2>Best Time to Charge</h2>
-                                <p>${response.best_time}</p>
-                                <h2>Predicted Price at Best Time</h2>
-                                <p>${response.best_price.toFixed(2)} EUR</p>
-                                <h2>Predicted Price at Your Time</h2>
-                                <p>${response.user_price.toFixed(2)} EUR</p>
-                                <h2>Amount Charged at Your Time</h2>
-                                <p>${response.amount_charged_at_input_time.toFixed(2)} EUR</p>
-                                <h2>Amount Charged at Best Time</h2>
-                                <p>${response.amount_charged_at_best_time.toFixed(2)} EUR</p>
-                                <h2>Amount Saved</h2>
-                                <p>${response.amount_saved.toFixed(2)} EUR</p>
-                            `).show();
-                        }
-                    });
-                }, 3000); 
+        document.querySelector('form').onsubmit = async function(event) {
+            event.preventDefault();
+            const form = event.target;
+            const formData = new FormData(form);
+
+            document.getElementById('loading').style.display = 'block';
+            document.getElementById('results').style.display = 'none';
+
+            const response = await fetch(form.action, {
+                method: form.method,
+                body: formData
             });
-        });
+
+            setTimeout(async () => {
+                const result = await response.json();
+
+                document.getElementById('loading').style.display = 'none';
+                
+                let resultDiv = document.getElementById('results');
+                resultDiv.style.display = 'block';
+                resultDiv.innerHTML = `
+                    <h2>Initial State of Charge: ${result.initial_soc.toFixed(2)}%</h2>
+                    <h2>Final State of Charge: ${result.final_soc.toFixed(2)}%</h2>
+                    <h2>Best Time to Charge: ${result.best_time}</h2>
+                    <h2>Best Price (euro/kWh): ${result.best_price.toFixed(2)}</h2>
+                    <h2>User Price (euro/kWh): ${result.user_price.toFixed(2)}</h2>
+                    <h2>Amount Charged at Input Time: ${result.amount_charged_at_input_time.toFixed(2)} euro</h2>
+                    <h2>Amount Charged at Best Time: ${result.amount_charged_at_best_time.toFixed(2)} euro</h2>
+                    <h2>Amount Saved: ${result.amount_saved.toFixed(2)} euro</h2>
+                `;
+            }, 3000);
+        };
     </script>
 </body>
 </html>
